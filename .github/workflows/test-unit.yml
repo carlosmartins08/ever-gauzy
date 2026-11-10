@@ -65,10 +65,7 @@ jobs:
           # to outlive the step in `.git/config`.
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-
+      - uses: ./.github/actions/setup-node-yarn
       - name: Restore node_modules archive
         # Best effort: the same key the build workflow writes, so a stage push that already built
         # this exact lockfile reuses that tree instead of installing again. `restore-node-modules.sh`

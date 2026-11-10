@@ -72,27 +72,15 @@ jobs:
 
       # The runner image ships Node 24, and package.json requires Node >=26 (engines), so `yarn` refused
       # to run at all: 'The engine "node" is incompatible'. Same pin as build.yml.
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
+      - uses: ./.github/actions/setup-node-yarn
 
       # NO actions/cache here, deliberately — see the archive step below. The budget is full of
       # caches that other workflows genuinely need, and writing this one would evict them.
 
-      # Point yarn at the internal Verdaccio VIP before the heaviest install in the fleet. This
-      # job is self-documented at 88 min, 3h20m and 3h46m, and every byte of it currently crosses
-      # the WAN to the public registry: the repo .npmrc pins registry.yarnpkg.com and nothing here
-      # overrode it.
-      #
-      # The action appends to .npmrc/.yarnrc AND rewrites the resolved URLs in yarn.lock. The
-      # rewrite is the load-bearing half: yarn v1 fetches the URL recorded in the lockfile and
-      # ignores the registry setting, so a config-only change here would be a measurable no-op.
-      # Verified separately that this does NOT break --frozen-lockfile: yarn compares package.json
-      # patterns against lockfile entries, and the resolved host is not part of that comparison.
-      #
-      # The action probes the VIP and falls back to the public registry, so a MetalLB speaker flap
-      # costs a slow install rather than a red build. Safe to place here: unlike build.yml, this
-      # workflow deliberately has NO actions/cache, so rewriting yarn.lock cannot move a cache key.
+      # Point yarn at the internal Verdaccio VIP before the heaviest install in the fleet. The
+      # action rewrites lockfile resolved URLs as well as registry config; Yarn 1 follows those
+      # lockfile URLs. Its VIP probe falls back to the public registry, and this workflow has no
+      # actions/cache whose key could be affected by that rewrite.
       - name: Configure Registry
         uses: ./.github/actions/configure-registry
         with:
@@ -168,10 +156,7 @@ jobs:
 
       # The runner image ships Node 24, and package.json requires Node >=26 (engines), so `yarn` refused
       # to run at all: 'The engine "node" is incompatible'. Same pin as build.yml.
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-
+      - uses: ./.github/actions/setup-node-yarn
       - name: Download node_modules archive
         id: archive
         uses: actions/download-artifact@v8
@@ -381,10 +366,7 @@ jobs:
 
       # The runner image ships Node 24, and package.json requires Node >=26 (engines), so `yarn` refused
       # to run at all: 'The engine "node" is incompatible'. Same pin as build.yml.
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-
+      - uses: ./.github/actions/setup-node-yarn
       - name: Download node_modules archive
         id: archive
         uses: actions/download-artifact@v8

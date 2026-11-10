@@ -110,10 +110,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-
+      - uses: ./.github/actions/setup-node-yarn
       - name: Test native rebuild setup
         run: yarn test:postinstall
 
@@ -214,10 +211,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-
+      - uses: ./.github/actions/setup-node-yarn
       - name: Download node_modules archive
         id: artifact
         uses: actions/download-artifact@v8
@@ -310,10 +304,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-
+      - uses: ./.github/actions/setup-node-yarn
       - name: Download node_modules archive
         id: artifact
         uses: actions/download-artifact@v8
@@ -519,10 +510,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-
+      - uses: ./.github/actions/setup-node-yarn
       - name: Download node_modules archive
         id: artifact
         uses: actions/download-artifact@v8
@@ -599,10 +587,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-
+      - uses: ./.github/actions/setup-node-yarn
       - name: Install system dependencies for Electron
         run: |
           sudo apt-get update

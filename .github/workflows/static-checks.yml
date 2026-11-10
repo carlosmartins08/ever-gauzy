@@ -58,9 +58,10 @@ jobs:
           # Read-only job; the checkout credential does not need to outlive the step.
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26
+          node-version-file: .nvmrc
+          package-manager-cache: false
 
       # No `yarn install`. `tools/tsconfig.jest-configs.json` is standalone - `types: []`,
       # `noResolve`, and a two-declaration shim in `tools/jest-config-globals.d.ts` - precisely so
@@ -101,10 +102,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-
+      - uses: ./.github/actions/setup-node-yarn
       - name: Restore node_modules archive
         # Best effort: the same key the build workflow writes, so a push that already built this
         # exact lockfile reuses that tree instead of installing again. The restore script below
@@ -191,9 +189,10 @@ jobs:
           # Read-only job; the checkout credential does not need to outlive the step.
           persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26
+          node-version-file: .nvmrc
+          package-manager-cache: false
 
       # No `yarn install`, for the same reason `typecheck-configs` above does without one: every
       # script below imports Node's built-in modules and nothing else - except the GraphQL

@@ -1,0 +1,124 @@
+name: Image Build Traceability
+
+# Build API and webapp from one checkout and retain the OCI digests as CI evidence.
+# This workflow does not run images, connect to a database, run migrations/seeds, or push images.
+on:
+  pull_request:
+    # Preserve the repository owner's existing decision to keep PRs into develop out of CI.
+    branches-ignore:
+      - develop
+    paths:
+      - '.deploy/api/**'
+      - '.deploy/webapp/**'
+      - '.dockerignore'
+      - 'apps/**'
+      - 'packages/**'
+      - 'yarn.lock'
+      - 'package.json'
+      - 'nx.json'
+      - '.nvmrc'
+      - '.scripts/**'
+      - 'tools/**'
+      - 'patches/**'
+      - 'angular.json'
+      - 'tsconfig*.json'
+      - '*.json'
+      - '*.js'
+      - '*.cjs'
+      - '*.mjs'
+      - '*.ts'
+      - '*.yaml'
+      - '*.yml'
+      - '.env*'
+      - '.browserslistrc'
+      - '.babelrc*'
+      - '.yarnrc*'
+      - '.github/actions/**'
+      - '.github/workflows/image-build-traceability.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  images:
+    name: Build API and webapp OCI images
+    runs-on: ${{ vars.RUNNER_LINUX_X64_8 || 'ubuntu-24.04' }}
+    timeout-minutes: 360
+    steps:
+      - name: Checkout exact source revision
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Read public release metadata
+        id: release
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          [[ -n "$version" ]]
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build API image as OCI archive
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./.deploy/api/Dockerfile
+          target: production
+          push: false
+          platforms: linux/amd64
+          outputs: type=oci,dest=/tmp/datax08-api.oci.tar
+          build-args: |
+            NODE_ENV=production
+            GAUZY_APP_VERSION=${{ steps.release.outputs.version }}
+            GAUZY_APP_COMMIT=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/ever-co/ever-gauzy
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.release.outputs.version }}
+
+      - name: Build webapp image as OCI archive
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: ./.deploy/webapp/Dockerfile
+          target: production
+          push: false
+          platforms: linux/amd64
+          outputs: type=oci,dest=/tmp/datax08-webapp.oci.tar
+          build-args: |
+            NODE_ENV=production
+            DEMO=false
+            GAUZY_APP_VERSION=${{ steps.release.outputs.version }}
+            GAUZY_APP_COMMIT=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/ever-co/ever-gauzy
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.release.outputs.version }}
+
+      - name: Record image digests and provenance
+        shell: bash
+        env:
+          SOURCE_COMMIT: ${{ github.sha }}
+          SOURCE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          for image in api webapp; do
+            archive="/tmp/datax08-${image}.oci.tar"
+            digest="$(tar -xOf "$archive" index.json | jq -er '
+              first(.manifests[]
+                | select(.platform.os == "linux" and .platform.architecture == "amd64")
+                | .digest)
+            ')"
+            printf '%s OCI manifest digest: `%s`\n' "$image" "$digest" >> "$GITHUB_STEP_SUMMARY"
+          done
+          {
+            printf '\nSource commit: `%s`\n' "$SOURCE_COMMIT"
+            printf 'Application version: `%s`\n' "$SOURCE_VERSION"
+            printf 'Platform: `linux/amd64`\n'
+            printf 'Builds: API and webapp from the same checkout; no registry push, database boot, migrations, or seeds.\n'
+          } >> "$GITHUB_STEP_SUMMARY"
