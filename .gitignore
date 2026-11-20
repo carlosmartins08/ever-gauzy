@@ -186,3 +186,5 @@ apps/server-api/src/assets/icons/menu
 /.research-notes/
 /package-lock.json
 /.vendor-denylist.json
+
+.claude/settings.local.json
